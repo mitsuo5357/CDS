@@ -1,0 +1,5 @@
+# 検索エンジン向け設定
+User-agent: *
+Allow: /
+
+Sitemap: https://mitsuo5357.github.io/CDS/sitemap.xml
