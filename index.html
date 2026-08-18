@@ -2,7 +2,6 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="https://mitsuo5357.github.io/favicon.ico">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>統計学でまちづくり ｜ Community Development with Statistics</title>
 <meta name="description" content="統計で、まちを前へ。代表研究者・田中満雄による、統計分析、現場で使う道具づくり、創作を横断する個人の研究活動です。">
@@ -265,6 +264,34 @@
   footer .tag{font-family:"Shippori Mincho",serif;font-size:1.5rem;font-weight:700;margin:10px 0 18px;letter-spacing:.08em}
   footer .copy{font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:#ffffff8c;letter-spacing:.08em}
 
+
+  /* ===== 公開ツール：防災統合ビューア ===== */
+  .field-tool{padding:26px 0 72px}
+  .field-tool-card{
+    display:grid;grid-template-columns:1.15fr .85fr;gap:30px;align-items:stretch;
+    background:var(--ink);color:var(--paper);border-radius:18px;padding:34px;
+    box-shadow:0 14px 40px #16454F1c;position:relative;overflow:hidden;
+  }
+  .field-tool-card::after{
+    content:"";position:absolute;right:-70px;top:-95px;width:250px;height:250px;border-radius:50%;
+    border:1px solid #83B25B55;box-shadow:0 0 0 34px #83B25B0c,0 0 0 68px #2E899D0d;
+  }
+  .field-tool-copy{position:relative;z-index:1}
+  .field-tool-kicker{font-family:"IBM Plex Mono",monospace;font-size:.69rem;letter-spacing:.16em;color:var(--green);margin-bottom:9px}
+  .field-tool-card h2{font-family:"Shippori Mincho",serif;font-size:clamp(1.55rem,3.6vw,2.25rem);line-height:1.4;margin-bottom:12px;color:#fff}
+  .field-tool-card p{font-size:.9rem;line-height:1.9;color:#ffffffc9;max-width:44em}
+  .field-tool-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+  .field-tool-tags span{font-family:"IBM Plex Mono",monospace;font-size:.66rem;border:1px solid #ffffff2d;border-radius:999px;padding:5px 9px;color:#e9f5ef}
+  .field-tool-actions{margin-top:22px;display:flex;flex-wrap:wrap;gap:9px}
+  .field-tool-actions a{display:inline-flex;align-items:center;text-decoration:none;font-size:.84rem;font-weight:700;border-radius:9px;padding:10px 14px}
+  .field-tool-actions .open{background:var(--green);color:#173d32}
+  .field-tool-actions .open:hover{background:#9cc878}
+  .field-tool-actions .official{border:1px solid #ffffff35;color:#fff;background:#ffffff0a}
+  .field-tool-side{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center}
+  .field-tool-safety{background:#ffffff0c;border:1px solid #ffffff26;border-radius:13px;padding:17px 18px;font-size:.8rem;line-height:1.75;color:#ffffffcf}
+  .field-tool-safety b{display:block;color:#fff;margin-bottom:5px;font-size:.86rem}
+  .field-tool-flow{margin-top:12px;font-family:"IBM Plex Mono",monospace;font-size:.68rem;color:#9bcbb0;line-height:1.8}
+
   @media(max-width:760px){
     .nav .links{display:none}
     .nav .links.open{display:flex;position:absolute;top:64px;left:0;right:0;flex-direction:column;background:var(--paper);border-bottom:1px solid #16454F22;padding:10px 16px;gap:2px}
@@ -272,6 +299,8 @@
     .contact-card{grid-template-columns:1fr;padding:30px;gap:26px}
 
     .contact-action{justify-content:flex-start}
+    .field-tool{padding:18px 0 50px}
+    .field-tool-card{grid-template-columns:1fr;padding:26px 22px;gap:18px}
     .hero{padding:54px 0 36px}
     .hero-head{flex-direction:column;align-items:flex-start;gap:18px}
     .emblem{width:88px;height:88px}
@@ -294,9 +323,10 @@
     </a>
     <button class="menu-btn" id="menuBtn" aria-label="メニュー">MENU</button>
     <nav class="links" id="navLinks">
-      <a href="#mission">「統計学でまちづくり」とは</a>
+      <a href="#mission">とは</a>
       <a href="#pillars">テーマ</a>
       <a href="#domains">活動</a>
+      <a href="#disaster-tool">防災β</a>
       <a href="#works">作品</a>
       <a href="#awards">実績</a>
       <a href="#feeds">発信</a>
@@ -391,6 +421,7 @@
             <a href="https://youtu.be/9s39L0IMWrQ?si=aBEHt972ITmwvzyj" target="_blank" rel="noopener">みんなの預り金会計 →</a>
             <a href="https://youtu.be/kpCHTuOoAcs?si=6N7ude7gVq92304b" target="_blank" rel="noopener">おくりむかえ係 →</a>
             <a href="https://youtu.be/YIIx4nGjPY0?si=R-KGV8wXFMIFjodg" target="_blank" rel="noopener">わざログ →</a>
+            <a href="tools/disaster/">防災統合ビューア β →</a>
           </div>
         </div>
         <a class="pillar" href="https://youtube.com/shorts/RiTzJTbpkpU?si=mBQq413T7xghUBfr" target="_blank" rel="noopener" aria-label="祭り保存の動画を見る">
@@ -434,13 +465,41 @@
           <span class="dn">D-03</span>
           <h3>ツール・アプリ開発</h3>
           <p>現場の「不便」をすくい上げ、内製ツールとして形に。使う人の手になじむ道具づくりを大切にします。</p>
-          <div class="tags"><span>業務改善</span><span>自動化</span><span>内製</span></div>
+          <div class="tags"><span>業務改善</span><span>自動化</span><span>内製</span><span>GIS / 防災</span></div>
         </div>
         <div class="domain" style="--accentc:var(--green-deep)">
           <span class="dn">D-04</span>
           <h3>創作（SF）</h3>
           <p>データだけでは届かない「社会のかたち」を、物語で考える。思考実験としてのSFを書いています。</p>
           <div class="tags"><span>思考実験</span><span>社会設計</span><span>SF</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- FEATURED FIELD TOOL -->
+  <section class="field-tool" id="disaster-tool">
+    <div class="wrap">
+      <div class="field-tool-card">
+        <div class="field-tool-copy">
+          <div class="field-tool-kicker">FIELD TOOL / PUBLIC BETA</div>
+          <h2>都城市 防災統合ビューア β</h2>
+          <p>災害時に分散しがちな公開情報を、同じ地図から確認しやすくするための試作ツールです。避難所候補、公開カメラ、水位・雨量を重ね、気象庁・都城市・宮崎県・国土交通省などの公式情報へすぐ移動できる入口をまとめています。</p>
+          <div class="field-tool-tags">
+            <span>避難所</span><span>河川・水位</span><span>公開カメラ</span><span>気象庁データ</span><span>現在地</span>
+          </div>
+          <div class="field-tool-actions">
+            <a class="open" href="tools/disaster/">防災ビューアを開く →</a>
+            <a class="official" href="https://www.city.miyakonojo.miyazaki.jp/hazardmap/index.html" target="_blank" rel="noopener">都城市公式防災マップ ↗</a>
+          </div>
+        </div>
+        <div class="field-tool-side">
+          <div class="field-tool-safety">
+            <b>個人研究による試作ツールです</b>
+            都城市の公式サービスではありません。避難指示・警報・道路規制・避難所の開設状況など、災害時の判断に関わる情報は必ず公式情報を優先してください。
+          </div>
+          <div class="field-tool-flow">DATA → MAP → OFFICIAL SOURCE → DECISION</div>
         </div>
       </div>
     </div>
