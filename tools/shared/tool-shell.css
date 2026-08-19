@@ -30,6 +30,14 @@ h1{font-family:"Shippori Mincho",serif;font-size:clamp(1.65rem,4vw,2.5rem);margi
 .quick a{text-decoration:none;color:var(--ink);font-size:.76rem;font-weight:700;background:var(--paper2);border:1px solid #16454F28;border-radius:8px;padding:7px 9px}
 .viewer{margin:8px 0 18px;border:1px solid #16454F2e;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 8px 30px #16454F12}
 iframe{display:block;width:100%;height:calc(100vh - 185px);min-height:630px;border:0;background:#fff}
+/* モバイルの100vhはアドレスバー伸縮でズレるため、対応ブラウザではdvhを使う */
+@supports(height:100dvh){ iframe{height:calc(100dvh - 185px)} }
+/* 地図がページスクロールを掴んだときの逃げ道 */
+.viewer-actions{display:flex;justify-content:flex-end;margin:6px 0 0}
+.viewer-actions a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;
+  border:1px solid #16454F2e;border-radius:999px;background:var(--paper2);color:var(--ink);
+  text-decoration:none;font-size:.78rem;font-weight:700}
+.viewer-actions a:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 .note{padding:0 0 32px;color:var(--soft);font-size:.78rem;line-height:1.75}
 .note details{background:var(--paper2);border:1px solid #16454F20;border-radius:10px;padding:10px 12px}
 .note summary{font-weight:700;color:var(--ink);cursor:pointer}
@@ -38,5 +46,7 @@ footer{background:var(--ink);color:var(--paper);padding:24px 0;text-align:center
 @media(max-width:700px){
  .hero{padding-top:14px}.lead{font-size:.82rem}.policy{grid-template-columns:1fr}
  iframe{height:calc(100vh - 118px);min-height:570px}
+ @supports(height:100dvh){ iframe{height:calc(100dvh - 118px);min-height:0} }
+ .viewer-actions{justify-content:center;padding:8px 12px 0}
  .quick{display:none}.viewer{margin-top:4px;border-left:0;border-right:0;border-radius:0}.wrap.viewer-wrap{padding:0}
 }

@@ -1,23 +1,107 @@
+/* =========================================================
+   CDS FIELD TOOLS ／ 地図UI共通スタイル
+   両ツール（防災 / くらし）で共有。個別の色や固有UIは
+   各 map.html のインライン <style> で上書きする。
+   ========================================================= */
+
 :root{--paper:#F7F4EA;--paper2:#FBF9F2;--ink:#16454F;--soft:#3A636C;--green:#4E7A33;--teal:#2E899D;--line:#16454F2a;--a:#326B57;--b:#2E7890;--c:#795E98;--red:#B64A52}
-*{box-sizing:border-box}html,body,#map{height:100%;margin:0}
+*{box-sizing:border-box}
+html,body,#map{height:100%;margin:0}
+html{-webkit-text-size-adjust:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;color:var(--ink);background:var(--paper)}
 #map{width:100%}
+
+/* ---------- パネル ---------- */
 .panel{position:fixed;z-index:9000;top:10px;right:10px;width:min(450px,calc(100vw - 20px));background:rgba(251,249,242,.97);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px #16454F25;overflow:hidden}
-.head{background:var(--ink);color:#fff;padding:10px 12px;display:flex;align-items:center;gap:8px}.head b{font-size:14px;flex:1}.beta{font:10px monospace;border:1px solid #ffffff55;border-radius:99px;padding:3px 6px}
-.body{padding:10px;max-height:82vh;overflow:auto}
-.notice{font-size:10.6px;line-height:1.55;background:#fff4dd;border:1px solid #e2c982;border-radius:9px;padding:7px 8px;margin-bottom:7px}
-.policyline{font-size:10.3px;line-height:1.55;background:#edf5f2;border:1px solid #a7c8bd;border-radius:9px;padding:7px 8px;margin-bottom:8px}
+.body{padding:10px;max-height:82vh;overflow:auto;-webkit-overflow-scrolling:touch}
+.panel.collapsed .body{display:none}
+
+/* ---------- パネルヘッダー ---------- */
+.head{background:var(--ink);color:#fff;padding:8px 10px;display:flex;align-items:center;gap:8px}
+.head .title{flex:1;min-width:0;color:#fff;text-decoration:none;display:flex;align-items:center;gap:6px;min-height:40px}
+.head .title b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.head .title .arrow{flex:0 0 auto;opacity:.8;font-size:13px}
+.head .title:hover .arrow{opacity:1}
+.hbtn{flex:0 0 auto;background:transparent;border:1px solid #ffffff55;color:#fff;border-radius:99px;
+      font:700 10px "IBM Plex Mono",monospace;padding:0 9px;min-height:40px;min-width:44px;cursor:pointer}
+.hbtn:active{background:#ffffff22}
+.beta{font:10px monospace;border:1px solid #ffffff55;border-radius:99px;padding:3px 6px}
+
+/* ---------- 注意書き・方針 ---------- */
+.notice{font-size:13px;line-height:1.6;background:#fff4dd;border:1px solid #e2c982;border-radius:9px;padding:8px 9px;margin-bottom:7px}
+.policyline{font-size:12px;line-height:1.6;background:#edf5f2;border:1px solid #a7c8bd;border-radius:9px;padding:8px 9px;margin-bottom:8px}
 .source-badge{display:inline-block;color:#fff;border-radius:999px;padding:2px 6px;font:700 9px "IBM Plex Mono",monospace;vertical-align:1px}
 .source-a{background:var(--a)}.source-b{background:var(--b)}.source-c{background:var(--c)}
+
+/* ---------- ボタン類：タップターゲット44px以上 ---------- */
 .filters{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.fbtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 7px;font:800 11px inherit;color:var(--ink);text-align:left;cursor:pointer}
-.fbtn.active{background:#e8f2ef;border-color:#81aa9f}.fbtn.haz.active{background:#f1edf7;border-color:#b8a3c5}.fbtn.weather.active{background:#eaf3fb;border-color:#91b7d4}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.actions button,.actions a{display:block;border:0;border-radius:9px;padding:9px 7px;text-decoration:none;font:800 10.5px inherit;text-align:center;cursor:pointer}
-.primary{background:var(--teal);color:#fff}.secondary{background:#dfecea;color:var(--ink)}.caction{background:#ece5f3;color:#523e68}
-.status{font-size:10.3px;color:var(--soft);line-height:1.5;margin-top:7px;min-height:1.5em}
-.quick{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}.quick a{text-decoration:none;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px;font-size:10px;font-weight:750}
-.near-title{margin:9px 2px 4px;font-weight:850;font-size:11.5px}.near{max-height:190px;overflow:auto}.item{background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px;margin:4px 0;cursor:pointer}.item b{font-size:11px}.item div{font-size:9.8px;color:var(--soft);margin-top:2px}
-.legend{position:fixed;z-index:8000;left:10px;bottom:20px;background:rgba(251,249,242,.96);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:10.5px;line-height:1.6;max-width:300px}
-.popup-title{font-weight:900;font-size:13px;margin-bottom:4px}.small{font-size:10.5px;line-height:1.55;color:#56666b}.src{display:inline-block;margin-top:6px;color:#176b80;text-decoration:none;font-size:10.5px;font-weight:800}
-.row{display:flex;gap:7px;align-items:center;margin-top:7px;font-size:10.5px}select{font:inherit;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);padding:4px 6px}
-@media(max-width:650px){.panel{top:auto;left:6px;right:6px;bottom:6px;width:auto}.body{max-height:50vh}.legend{display:none}}
+.fbtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 9px;
+      font:800 12.5px inherit;color:var(--ink);text-align:left;cursor:pointer;
+      min-height:44px;display:flex;align-items:center;line-height:1.35}
+.fbtn.active{background:#e8f2ef;border-color:#81aa9f}
+.fbtn.haz.active{background:#f1edf7;border-color:#b8a3c5}
+.fbtn.weather.active{background:#eaf3fb;border-color:#91b7d4}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+.actions button,.actions a{border:0;border-radius:9px;padding:8px 9px;text-decoration:none;
+      font:800 12.5px inherit;text-align:center;cursor:pointer;
+      min-height:44px;display:flex;align-items:center;justify-content:center;line-height:1.35}
+.primary{background:var(--teal);color:#fff}
+.secondary{background:#dfecea;color:var(--ink)}
+.caction{background:#ece5f3;color:#523e68}
+
+.status{font-size:12px;color:var(--soft);line-height:1.6;margin-top:7px;min-height:1.6em}
+
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
+.quick a{text-decoration:none;color:var(--ink);background:#fff;border:1px solid var(--line);
+      border-radius:8px;padding:7px;font-size:11.5px;font-weight:750;
+      min-height:42px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.35}
+
+/* ---------- 近い施設リスト ---------- */
+.near-title{margin:9px 2px 4px;font-weight:850;font-size:12.5px}
+.near{max-height:190px;overflow:auto;-webkit-overflow-scrolling:touch}
+.item{background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px;margin:5px 0;cursor:pointer;min-height:44px}
+.item b{font-size:12.5px}
+.item div{font-size:11px;color:var(--soft);margin-top:3px}
+
+/* ---------- 出典（下パネルでLeaflet attributionが隠れる対策） ---------- */
+.attrline{font-size:10.5px;line-height:1.55;color:var(--soft);margin-top:8px;padding-top:7px;border-top:1px solid var(--line)}
+.attrline a{color:var(--soft)}
+
+/* ---------- 凡例 ---------- */
+.legend{position:fixed;z-index:8000;left:10px;bottom:20px;background:rgba(251,249,242,.96);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.6;max-width:300px}
+
+/* ---------- ポップアップ ---------- */
+.popup-title{font-weight:900;font-size:14px;margin-bottom:4px}
+.small{font-size:12px;line-height:1.6;color:#56666b}
+.src{display:inline-block;margin-top:6px;color:#176b80;text-decoration:none;font-size:12.5px;font-weight:800}
+
+/* ---------- 行（検索半径など） ---------- */
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px}
+select{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);padding:0 8px;min-height:44px}
+
+/* ---------- キーボード操作 ---------- */
+.fbtn:focus-visible,.actions button:focus-visible,.actions a:focus-visible,
+.quick a:focus-visible,.hbtn:focus-visible,.head .title:focus-visible,
+.item:focus-visible,select:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+
+/* =========================================================
+   モバイル
+   ========================================================= */
+@media(max-width:650px){
+  /* セーフエリア対応：ホームインジケータにパネルを食われない */
+  .panel{top:auto;left:6px;right:6px;width:auto;
+         bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+  .body{max-height:52vh}
+
+  /* 最初の一手（現在地）を最上段・全幅へ */
+  .actions .primary{order:-1;grid-column:1/-1}
+
+  /* 二重スクロール解消：リストは親パネルのスクロールに任せる */
+  .near{max-height:none;overflow:visible}
+
+  /* 凡例は常時非表示ではなく、ヘッダーのボタンから開閉 */
+  .legend{display:none}
+  .legend.show{display:block;left:6px;right:6px;bottom:auto;
+               top:calc(8px + env(safe-area-inset-top,0px));max-width:none;z-index:9100}
+}
