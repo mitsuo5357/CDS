@@ -6,13 +6,20 @@
 <title>防災統合ビューア JAPAN β</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../shared/map-common.css">
-<style>.head{background:#16454F}</style>
+<style>
+/* 防災ビューア固有：ヘッダー色のみ */
+.head{background:#16454F}
+</style>
 </head>
 <body>
 <div id="map"></div>
-<div class="panel">
- <div class="head"><b>防災統合ビューア JAPAN</b><span class="beta">ABC β</span></div>
- <div class="body">
+<div class="panel" id="panel">
+ <div class="head">
+  <a class="title" href="./" target="_top"><span class="arrow">←</span><b>防災統合ビューア JAPAN</b></a>
+  <button class="hbtn" id="legendBtn" aria-expanded="false" title="A / B / C のデータ設計を表示">ABC β</button>
+  <button class="hbtn" id="collapseBtn" aria-expanded="true" aria-controls="panelBody" title="パネルを閉じて地図を広く見る">▼</button>
+ </div>
+ <div class="body" id="panelBody">
   <div class="notice"><b>指定避難所＝開設中ではありません。</b> 命に関わる判断は、必ず国・都道府県・市区町村等の最新公式情報を優先してください。</div>
   <div class="policyline"><span class="source-badge source-a">A 全国公式</span> は直接表示 ／ <span class="source-badge source-b">B オープン</span> は防災主要レイヤーでは現在不使用 ／ <span class="source-badge source-c">C 公式連携</span> は現在地点から公式サイトへ。</div>
 
@@ -34,16 +41,17 @@
    <button class="secondary" onclick="map.setView([36.2,138.2],5)">🗾 全国表示</button>
   </div>
 
-  <div id="status" class="status">指定避難所はズーム9以上で、表示範囲の全国公式データを取得します。</div>
+  <div id="status" class="status" aria-live="polite">まずは「📍 現在地へ」を押すか、見たい場所を拡大してください（ズーム9以上で避難所を表示します）。</div>
   <div class="quick">
    <a href="https://www.jma.go.jp/bosai/warning/" target="_blank" rel="noopener">C ⚠️ 気象庁 警報 ↗</a>
    <a href="https://www.jma.go.jp/bosai/nowc/" target="_blank" rel="noopener">C ☔ 雨雲・雷 ↗</a>
    <a href="https://www.river.go.jp/" target="_blank" rel="noopener">C 🌊 川の防災情報 ↗</a>
    <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">C 🗺 公式ハザード ↗</a>
   </div>
+  <div class="attrline">出典：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル</a>／<a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータル</a>／<a href="https://www.jma.go.jp/bosai/amedas/" target="_blank" rel="noopener">気象庁アメダス</a></div>
  </div>
 </div>
-<div class="legend">
+<div class="legend" id="legend">
  <b>データ設計</b><br>
  <span class="source-badge source-a">A</span> 国土地理院・気象庁等を直接表示<br>
  <span class="source-badge source-b">B</span> 防災の主要判断には現在不使用<br>
@@ -53,17 +61,21 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../shared/map-core.js"></script>
 <script>
-const {esc,badge}=CDS;
+const {esc,badge,pin,runLimited,debounce,singleFlight,initPanelChrome,locate}=CDS;
 const map=L.map('map',{preferCanvas:true}).setView([36.2,138.2],5);
 L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{
  maxZoom:18,attribution:'出典：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院 地理院タイル</a>'
 }).addTo(map);
 const status=document.getElementById('status');
+initPanelChrome(map);
 
 const groups={shelter:L.layerGroup().addTo(map),emergency:L.layerGroup(),amedas:L.layerGroup()};
 const active={shelter:true,emergency:false,amedas:false,flood:false,inland:false,tsunami:false,hightide:false,landslide:false};
 const loaded={shelter:new Set(),emergency:new Set()};
 const emergencyPoints=new Map();
+const PIN={shelter:'#2F7A54',welfare:'#7A55A0',emergency:'#C05F33'};
+const MAX_TILES=24;   // 一度に取得するタイル数の上限（旧80）
+const CONCURRENCY=6;  // 同時リクエスト数
 
 const raster={
  flood:L.tileLayer('https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png',{opacity:.55,maxZoom:17,attribution:'ハザードマップポータル'}),
@@ -113,12 +125,12 @@ async function fetchShelterTile(type,z,x,y,kind,hazardLabel=''){
       continue;
     }
     const obj={hazards:new Set([hazardLabel]), marker:null};
-    obj.marker=L.circleMarker([lat,lon],{radius:6,color:'#A05239',weight:2,fillColor:'#E9A17E',fillOpacity:.82});
+    obj.marker=pin(lat,lon,PIN.emergency);
     obj.marker.bindPopup(()=>`<div class="popup-title">${badge('A')} 🏃 ${esc(name)}</div><div class="small">${infoRows(p)}${obj.hazards.size?'<br><b>対応災害：</b>'+[...obj.hazards].map(esc).join('・'):''}<br><b>注意：</b>指定情報であり、現在開設中とは限りません。</div><a class="src" href="https://www.gsi.go.jp/bousaichiri/hinanbasho" target="_blank" rel="noopener">国土地理院で確認 ↗</a>`);
     obj.marker.addTo(groups.emergency);emergencyPoints.set(key2,obj);n++;
    }else{
     const welfare=type==='sfh';
-    L.circleMarker([lat,lon],{radius:6,color:welfare?'#725487':'#376E55',weight:2,fillColor:welfare?'#BBA5C9':'#83B25B',fillOpacity:.82})
+    pin(lat,lon,welfare?PIN.welfare:PIN.shelter)
      .bindPopup(`<div class="popup-title">${badge('A')} ${welfare?'♿':'🏠'} ${esc(name)}</div><div class="small">${infoRows(p)}<br><b>種類：</b>${welfare?'福祉避難所':'指定避難所'}<br><b>注意：</b>指定情報であり、現在開設中とは限りません。</div><a class="src" href="https://www.gsi.go.jp/bousaichiri/hinanbasho" target="_blank" rel="noopener">国土地理院で確認 ↗</a>`)
      .addTo(groups.shelter);n++;
    }
@@ -126,20 +138,29 @@ async function fetchShelterTile(type,z,x,y,kind,hazardLabel=''){
   return n;
  }catch(e){return 0}
 }
-async function refreshShelters(){
- if(map.getZoom()<9){status.textContent='避難所を見るにはズーム9以上まで拡大してください。';return;}
- const ts=tilesInView();if(ts.length>80){status.textContent='表示範囲が広すぎます。もう少しズームしてください。';return;}
- let n=0;
+
+const refreshShelters=singleFlight(async()=>{
+ if(!active.shelter&&!active.emergency){status.textContent='避難所レイヤーは現在オフです。';return;}
+ if(map.getZoom()<9){
+  status.textContent='避難所を表示するには、もう少し拡大してください。「📍 現在地へ」を押すと一度に移動できます。';
+  return;
+ }
+ const ts=tilesInView();
+ if(ts.length>MAX_TILES){status.textContent='表示範囲が広すぎます。もう少し拡大してください。';return;}
+ const tasks=[];
  if(active.shelter)for(const [z,x,y] of ts){
-  n+=await fetchShelterTile('sih',z,x,y,'shelter');
-  n+=await fetchShelterTile('sfh',z,x,y,'shelter');
+  tasks.push(()=>fetchShelterTile('sih',z,x,y,'shelter'));
+  tasks.push(()=>fetchShelterTile('sfh',z,x,y,'shelter'));
  }
  if(active.emergency){
   const types=[['skhb01','洪水'],['skhb02','土砂災害'],['skhb03','高潮'],['skhb04','地震'],['skhb05','津波'],['skhb06','大規模な火事'],['skhb07','内水氾濫'],['skhb08','火山']];
-  for(const [z,x,y] of ts)for(const [tp,label] of types)n+=await fetchShelterTile(tp,z,x,y,'emergency',label);
+  for(const [z,x,y] of ts)for(const [tp,label] of types)tasks.push(()=>fetchShelterTile(tp,z,x,y,'emergency',label));
  }
- status.textContent=`${badge('A')} 表示範囲の公式避難情報を確認しました${n?'（新規 '+n+'件）':''}。`;
-}
+ if(!tasks.length){status.innerHTML=`${badge('A')} この範囲は取得済みです。`;return;}
+ status.innerHTML=`${badge('A')} 公式避難情報を取得中…`;
+ const n=await runLimited(tasks,CONCURRENCY);
+ status.innerHTML=`${badge('A')} 表示範囲の公式避難情報を確認しました${n?'（新規 '+n+'件）':''}。`;
+});
 
 // AMeDAS
 let amedasTable=null,amedasData={},amedasLatest='',amedasLoaded=false;
@@ -168,7 +189,7 @@ async function loadAmedas(){
   if(!dr.ok)throw new Error('JMA map fetch failed');
   amedasData=await dr.json();amedasLoaded=true;redrawAmedas();
  }catch(e){
-  status.textContent='アメダス取得に失敗しました。気象庁公式ページから確認してください。';
+  status.textContent='アメダスを取得できませんでした。気象庁の公式ページから確認してください。';
  }
 }
 function redrawAmedas(){
@@ -178,13 +199,15 @@ function redrawAmedas(){
   const lat=dm(s.lat),lon=dm(s.lon);if(!b.contains([lat,lon]))continue;
   const d=amedasData[id]||{},rain=vv(d.precipitation1h);
   const col=(rain!==null&&rain>=20)?'#B64A52':((rain!==null&&rain>0)?'#3E79A8':'#557A72');
-  L.circleMarker([lat,lon],{radius:5,color:col,weight:2,fillColor:'#fff',fillOpacity:.72})
-   .bindTooltip(s.kjName||id).bindPopup(amedasPopup(id,s,d)).addTo(groups.amedas);n++;
+  pin(lat,lon,col,6).bindTooltip(s.kjName||id).bindPopup(amedasPopup(id,s,d)).addTo(groups.amedas);n++;
  }
  status.innerHTML=`${badge('A')} 表示範囲のアメダス ${n}地点 ／ ${esc(amedasLatest||'')}`;
 }
 
-map.on('moveend zoomend',()=>{if(active.shelter||active.emergency)refreshShelters();if(active.amedas&&amedasLoaded)redrawAmedas();});
+map.on('moveend zoomend',debounce(()=>{
+ if(active.shelter||active.emergency)refreshShelters();
+ if(active.amedas&&amedasLoaded)redrawAmedas();
+},300));
 
 document.querySelectorAll('.fbtn').forEach(btn=>{
  btn.onclick=()=>{
@@ -203,14 +226,12 @@ function openRiver(){
 }
 let here=null,accuracy=null;
 function locateMe(){
- if(!navigator.geolocation){alert('このブラウザは位置情報に対応していません。');return;}
- navigator.geolocation.getCurrentPosition(p=>{
-  const lat=p.coords.latitude,lon=p.coords.longitude;
+ locate((lat,lon,acc)=>{
   if(here)map.removeLayer(here);if(accuracy)map.removeLayer(accuracy);
   here=L.circleMarker([lat,lon],{radius:8,color:'#16454F',weight:3,fillColor:'#fff',fillOpacity:1}).addTo(map).bindPopup('現在地');
-  accuracy=L.circle([lat,lon],{radius:p.coords.accuracy||50,color:'#16454F',weight:1,fillOpacity:.04}).addTo(map);
-  map.setView([lat,lon],12);here.openPopup();
- },()=>alert('位置情報を取得できませんでした。HTTPS/localhostで開き、ブラウザの位置情報許可を確認してください。'),{enableHighAccuracy:true,timeout:10000});
+  accuracy=L.circle([lat,lon],{radius:acc||50,color:'#16454F',weight:1,fillOpacity:.04}).addTo(map);
+  map.setView([lat,lon],13);here.openPopup();
+ },status);
 }
 setTimeout(refreshShelters,350);
 </script>
