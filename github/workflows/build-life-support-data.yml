@@ -1,1 +1,112 @@
+name: くらしのおたすけマップ Bデータ更新
 
+# 月1回、OpenStreetMapの日本全国データからスナップショットを作り直す。
+# 手動実行もできる（Actions画面の Run workflow）。
+on:
+  schedule:
+    - cron: "0 18 1 * *"   # 毎月1日 03:00 JST（UTC 18:00 前日）
+  workflow_dispatch:
+
+# 実行が重なると2.4GBのダウンロードが二重に走るので、後発を待たせる
+concurrency:
+  group: life-support-data
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: osmium-tool を導入
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          osmium --version
+
+      - name: 空き容量を確認（2.4GBのPBFを扱うため）
+        run: df -h /
+
+      - name: 日本全国のOSMデータを取得（Geofabrik）
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 30 \
+            -o japan.osm.pbf https://download.geofabrik.de/asia/japan-latest.osm.pbf
+          curl -fL --retry 3 \
+            -o japan.osm.pbf.md5 https://download.geofabrik.de/asia/japan-latest.osm.pbf.md5
+          # 配布元のmd5ファイルは元のファイル名を指しているので、名前を合わせて検証する
+          sed 's#japan-latest.osm.pbf#japan.osm.pbf#' japan.osm.pbf.md5 | md5sum -c -
+          ls -lh japan.osm.pbf
+
+      - name: 対象タグだけに絞り込み
+        run: |
+          set -euo pipefail
+          osmium tags-filter -o filtered.osm.pbf --overwrite japan.osm.pbf \
+            nwr/amenity=toilets \
+            nwr/amenity=drinking_water \
+            nwr/changing_table \
+            nwr/drinking_water=yes \
+            nwr/internet_access=wlan \
+            nwr/internet_access=yes
+          ls -lh filtered.osm.pbf
+
+      - name: GeoJSONへ書き出し
+        run: |
+          set -euo pipefail
+          osmium export -f geojsonseq -o poi.geojsonseq --overwrite \
+            -u type_id -a id,type filtered.osm.pbf
+          wc -l poi.geojsonseq
+
+      - name: 元データの日付を取得
+        id: srcdate
+        run: |
+          set -euo pipefail
+          TS=$(osmium fileinfo japan.osm.pbf | grep -o 'osmosis_replication_timestamp=[0-9-]*' | head -1 | cut -d= -f2)
+          echo "date=${TS:-$(date -u +%Y-%m-%d)}" >> "$GITHUB_OUTPUT"
+          echo "source date: ${TS:-unknown}"
+
+      - name: タイルを生成
+        run: |
+          set -euo pipefail
+          python3 scripts/build_life_support_tiles.py \
+            --input poi.geojsonseq \
+            --out tools/life-support/data \
+            --zoom 12 \
+            --source-date "${{ steps.srcdate.outputs.date }}"
+
+      - name: 生成物を検証（壊れたデータをそのまま公開しない）
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, sys, pathlib
+          meta = json.loads(pathlib.Path("tools/life-support/data/meta.json").read_text())
+          n = meta["features"]
+          print("features:", n, "tiles:", meta["tiles"])
+          # 全国のトイレ等が急に激減していたら、上流かスクリプトの異常を疑う
+          if n < 30000:
+              sys.exit(f"件数が異常に少ない（{n}件）。公開を中止します。")
+          if meta["by_category"]["toilet"] < 20000:
+              sys.exit("トイレの件数が異常です。公開を中止します。")
+          PY
+
+      - name: 大きな一時ファイルを削除
+        run: rm -f japan.osm.pbf japan.osm.pbf.md5 filtered.osm.pbf poi.geojsonseq
+
+      - name: 変更があればコミット
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/life-support/data
+          if git diff --cached --quiet; then
+            echo "変更なし。コミットしません。"
+            exit 0
+          fi
+          git commit -m "データ更新: くらしのおたすけマップ B（OSM ${{ steps.srcdate.outputs.date }} 時点）"
+          git push
