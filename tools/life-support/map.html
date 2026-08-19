@@ -6,13 +6,20 @@
 <title>くらしのおたすけマップ JAPAN β</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../shared/map-common.css">
-<style>.head{background:#245C58}</style>
+<style>
+/* くらしのおたすけマップ固有：ヘッダー色のみ */
+.head{background:#245C58}
+</style>
 </head>
 <body>
 <div id="map"></div>
-<div class="panel">
- <div class="head"><b>くらしのおたすけマップ JAPAN</b><span class="beta">ABC β</span></div>
- <div class="body">
+<div class="panel" id="panel">
+ <div class="head">
+  <a class="title" href="./" target="_top"><span class="arrow">←</span><b>くらしのおたすけマップ JAPAN</b></a>
+  <button class="hbtn" id="legendBtn" aria-expanded="false" title="A / B / C のデータ設計を表示">ABC β</button>
+  <button class="hbtn" id="collapseBtn" aria-expanded="true" aria-controls="panelBody" title="パネルを閉じて地図を広く見る">▼</button>
+ </div>
+ <div class="body" id="panelBody">
   <div class="notice"><b>全国どこでも同じ検索。</b> BのOpenStreetMapは共同編集データです。未掲載・更新遅れがあるので、現地・施設公式情報を優先してください。</div>
   <div class="policyline"><span class="source-badge source-a">A 全国公式</span> は全国施設座標がある分野から採用 ／ <span class="source-badge source-b">B オープン</span> は周辺検索 ／ <span class="source-badge source-c">C 公式連携</span> はAED・暑熱避難等。</div>
 
@@ -24,9 +31,9 @@
    <button class="fbtn" data-cat="wifi">B 📶 Wi-Fi</button>
   </div>
 
-  <div class="row">検索半径
+  <div class="row"><label for="radius">検索半径</label>
    <select id="radius"><option value="1000">1 km</option><option value="3000" selected>3 km</option><option value="5000">5 km</option></select>
-   <span>※検索時だけ外部取得</span>
+   <span>※検索したときだけ外部取得</span>
   </div>
   <div class="actions">
    <button class="primary" onclick="searchHere()">📍 現在地で検索</button>
@@ -35,16 +42,17 @@
    <a class="caction" href="https://www.wbgt.env.go.jp/heatillness_shelter.php" target="_blank" rel="noopener">C ❄️ 暑熱避難</a>
   </div>
 
-  <div id="status" class="status">まだ周辺検索していません。</div>
+  <div id="status" class="status" aria-live="polite">まずは「📍 現在地で検索」を押してください。地図を動かしてから「地図中心で検索」でも探せます。</div>
   <div class="quick">
    <a href="https://japanfreewifi.jnto.go.jp/eng/wifi-spot-list.php?distance=5000&location=curp&sort=distance&view=map" target="_blank" rel="noopener">C 📶 Japan.Free Wi-Fi ↗</a>
    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">B OSM / ODbL ↗</a>
   </div>
   <div class="near-title">近い施設</div>
-  <div id="near" class="near"><div style="font-size:10px;color:#68777a">検索すると距離順に表示します。</div></div>
+  <div id="near" class="near"><div style="font-size:11px;color:#68777a">検索すると距離順に表示します。</div></div>
+  <div class="attrline">出典：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル</a>／<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors（ODbL）</a></div>
  </div>
 </div>
-<div class="legend">
+<div class="legend" id="legend">
  <b>データ設計</b><br>
  <span class="source-badge source-a">A</span> 全国公式の位置付き施設データがある分野から採用<br>
  <span class="source-badge source-b">B</span> OpenStreetMap / ODbL 周辺検索<br>
@@ -54,15 +62,19 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../shared/map-core.js"></script>
 <script>
-const {esc,badge,hav,dist}=CDS;
+const {esc,badge,hav,dist,pin,initPanelChrome,locate}=CDS;
 const map=L.map('map',{preferCanvas:true}).setView([36.2,138.2],5);
 L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{
  maxZoom:18,attribution:'出典：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院 地理院タイル</a>'
 }).addTo(map);
 
 const dynamic=L.layerGroup().addTo(map),status=document.getElementById('status'),near=document.getElementById('near');
+initPanelChrome(map);
+
 let active={toilet:true,accessible:true,baby:true,water:true,wifi:false},lastOrigin=null,lastResults=[],markerByIndex=new Map();
+let hereMarker=null,searching=false;
 const overpassEndpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+const OVERPASS_TIMEOUT=30000;
 
 function cats(t){
  const c=[];
@@ -80,7 +92,7 @@ function redraw(){
  dynamic.clearLayers();markerByIndex.clear();
  lastResults.forEach((r,i)=>{
   if(!visible(r))return;
-  const m=L.circleMarker([r.lat,r.lon],{radius:6,color:color(r.cats),weight:2,fillColor:'#fff',fillOpacity:.42})
+  const m=pin(r.lat,r.lon,color(r.cats))
    .bindPopup(`<div class="popup-title">${badge('B')} ${icons(r.cats)} ${esc(r.name)}</div><div class="small"><b>出典：</b>OpenStreetMap contributors / ODbL<br>${esc(r.note||'')}<br>共同編集データのため、利用可否・営業時間等は現地・施設公式情報を優先してください。</div><a class="src" href="${r.osm}" target="_blank" rel="noopener">OpenStreetMapで確認 ↗</a>`);
   dynamic.addLayer(m);markerByIndex.set(i,m);
  });
@@ -93,15 +105,22 @@ document.querySelectorAll('.fbtn').forEach(b=>b.onclick=()=>{
 async function overpassFetch(q){
  let lastError=null;
  for(const endpoint of overpassEndpoints){
+  const ac=new AbortController();
+  const timer=setTimeout(()=>ac.abort(),OVERPASS_TIMEOUT);
   try{
-   const rr=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(q)});
+   const rr=await fetch(endpoint,{method:'POST',signal:ac.signal,
+     headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+     body:'data='+encodeURIComponent(q)});
    if(!rr.ok)throw new Error('HTTP '+rr.status);
    return await rr.json();
   }catch(e){lastError=e;}
+  finally{clearTimeout(timer);}
  }
  throw lastError||new Error('Overpass failed');
 }
 async function runSearch(lat,lon){
+ if(searching){status.innerHTML=`${badge('B')} 前の検索を実行中です。少しお待ちください。`;return;}
+ searching=true;
  const radius=parseInt(document.getElementById('radius').value);
  lastOrigin=[lat,lon];lastResults=[];dynamic.clearLayers();near.innerHTML='';
  status.innerHTML=`${badge('B')} 周辺データを取得中…`;
@@ -121,32 +140,40 @@ async function runSearch(lat,lon){
    const notes=[];
    if(t.opening_hours)notes.push('営業時間 '+t.opening_hours);
    if(t.fee)notes.push('料金 '+t.fee);
-   if(t.access)notes.push('access '+t.access);
+   if(t.access)notes.push('立入 '+t.access);
    if(t.operator)notes.push('運営 '+t.operator);
    lastResults.push({lat:la,lon:lo,cats:c,name:t['name:ja']||t.name||fallback,note:notes.join(' / '),osm:`https://www.openstreetmap.org/${e.type}/${e.id}`});
   }
   status.innerHTML=`${badge('B')} 半径 ${radius/1000}km：${lastResults.length}件取得。OSMの未掲載・更新遅れの可能性があります。`;
   redraw();showNear();
  }catch(e){
-  status.textContent='OpenStreetMap周辺検索の取得に失敗しました。公開Overpassサービスが混雑している可能性があります。時間を置いて再試行してください。';
-  near.innerHTML='<div style="font-size:10px;color:#8b4b52">取得できませんでした。AED・暑熱避難等の公式サービスは上のCボタンから利用できます。</div>';
- }
+  status.textContent='OpenStreetMapの周辺検索を取得できませんでした。公開Overpassサービスが混雑している可能性があります。時間を置いて、もう一度お試しください。';
+  near.innerHTML='<div style="font-size:11px;color:#8b4b52">取得できませんでした。AED・暑熱避難などの公式サービスは、上のCボタンから利用できます。</div>';
+ }finally{searching=false;}
 }
 function showNear(){
  if(!lastOrigin)return;
  const a=lastResults.map((r,i)=>({r,i,d:hav(lastOrigin[0],lastOrigin[1],r.lat,r.lon)})).filter(x=>visible(x.r)).sort((a,b)=>a.d-b.d).slice(0,12);
- near.innerHTML=a.length?a.map(x=>`<div class="item" onclick="focusR(${x.i})"><b>${icons(x.r.cats)} ${esc(x.r.name)}</b><div>${dist(x.d)} ／ B OpenStreetMap</div></div>`).join(''):'<div style="font-size:10px;color:#68777a">条件に合う地点がありません。</div>';
+ near.innerHTML=a.length
+  ?a.map(x=>`<div class="item" role="button" tabindex="0" data-i="${x.i}"><b>${icons(x.r.cats)} ${esc(x.r.name)}</b><div>${dist(x.d)} ／ B OpenStreetMap</div></div>`).join('')
+  :'<div style="font-size:11px;color:#68777a">条件に合う地点がありません。フィルタを増やすか、検索半径を広げてください。</div>';
 }
-function focusR(i){const r=lastResults[i],m=markerByIndex.get(i);map.setView([r.lat,r.lon],17);if(m)m.openPopup();}
+/* リストはイベント委譲。キーボードでも選べる */
+near.addEventListener('click',e=>{const el=e.target.closest('.item');if(el)focusR(Number(el.dataset.i));});
+near.addEventListener('keydown',e=>{
+ if(e.key!=='Enter'&&e.key!==' ')return;
+ const el=e.target.closest('.item');if(!el)return;
+ e.preventDefault();focusR(Number(el.dataset.i));
+});
+function focusR(i){const r=lastResults[i],m=markerByIndex.get(i);if(!r)return;map.setView([r.lat,r.lon],17);if(m)m.openPopup();}
 function searchCenter(){const c=map.getCenter();runSearch(c.lat,c.lng);}
 function searchHere(){
- if(!navigator.geolocation){alert('このブラウザは位置情報に対応していません。');return;}
- navigator.geolocation.getCurrentPosition(p=>{
-  const lat=p.coords.latitude,lon=p.coords.longitude;
+ locate((lat,lon)=>{
   map.setView([lat,lon],14);
-  L.circleMarker([lat,lon],{radius:8,color:'#16454F',weight:3,fillColor:'#fff',fillOpacity:1}).addTo(map).bindPopup('現在地').openPopup();
+  if(hereMarker)map.removeLayer(hereMarker);
+  hereMarker=L.circleMarker([lat,lon],{radius:8,color:'#16454F',weight:3,fillColor:'#fff',fillOpacity:1}).addTo(map).bindPopup('現在地');
   runSearch(lat,lon);
- },()=>alert('位置情報を取得できませんでした。HTTPS/localhostで開き、ブラウザの位置情報許可を確認してください。'),{enableHighAccuracy:true,timeout:10000});
+ },status);
 }
 </script>
 </body>
