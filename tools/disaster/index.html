@@ -3,89 +3,55 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>都城市 防災統合ビューア β ｜ 統計学でまちづくり</title>
-<meta name="description" content="都城市周辺の避難所候補、公開カメラ、水位・雨量などの公開情報と、気象庁・道路・河川・避難所混雑の公式情報への導線を一つにまとめた個人研究プロトタイプです。">
+<title>防災統合ビューア JAPAN β ｜ 統計学でまちづくり</title>
+<meta name="description" content="全国の指定避難所、指定緊急避難場所、ハザード、アメダスと、河川カメラ・水位・雨量・道路カメラ等の公式サービスへの導線を、現在地と一緒に確認する個人研究プロトタイプです。">
 <meta name="robots" content="index,follow">
 <link rel="canonical" href="https://mitsuo5357.github.io/CDS/tools/disaster/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root{
- --paper:#F7F4EA;--paper2:#FBF9F2;--ink:#16454F;--soft:#3A636C;
- --green:#83B25B;--green2:#4E7A33;--teal:#2E899D;--line:#16454F;
-}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans JP",sans-serif}
-body{background-image:linear-gradient(#16454F0a 1px,transparent 1px),linear-gradient(90deg,#16454F0a 1px,transparent 1px);background-size:24px 24px}
-.wrap{max-width:1120px;margin:0 auto;padding:0 18px}
-header{background:rgba(247,244,234,.94);border-bottom:1px solid #16454F20;position:sticky;top:0;z-index:50;backdrop-filter:blur(8px)}
-.nav{height:58px;display:flex;align-items:center;gap:12px}
-.brand{font-family:"Shippori Mincho",serif;font-weight:700;text-decoration:none;color:var(--ink)}
-.brand small{display:block;font-family:"IBM Plex Mono",monospace;font-size:.55rem;color:var(--soft);letter-spacing:.15em}
-.back{margin-left:auto;text-decoration:none;color:var(--soft);font-size:.78rem;border:1px solid #16454F2e;border-radius:8px;padding:7px 10px;background:var(--paper2)}
-.hero{padding:22px 0 14px}
-.eyebrow{font-family:"IBM Plex Mono",monospace;color:var(--teal);font-size:.68rem;letter-spacing:.18em}
-h1{font-family:"Shippori Mincho",serif;font-size:clamp(1.65rem,4vw,2.5rem);margin:5px 0 8px;line-height:1.3}
-.lead{color:var(--soft);font-size:.9rem;line-height:1.75;max-width:55rem}
-.safety{margin-top:12px;border-left:5px solid #c57343;background:#fff2e9;border-radius:10px;padding:10px 12px;font-size:.82rem;line-height:1.65}
-.safety strong{color:#7d3c1a}
-.quick{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-.quick a{text-decoration:none;color:var(--ink);font-size:.76rem;font-weight:700;background:var(--paper2);border:1px solid #16454F28;border-radius:8px;padding:7px 9px}
-.viewer{margin:8px 0 18px;border:1px solid #16454F2e;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 8px 30px #16454F12}
-iframe{display:block;width:100%;height:calc(100vh - 178px);min-height:620px;border:0;background:#fff}
-.note{padding:0 0 32px;color:var(--soft);font-size:.78rem;line-height:1.75}
-.note details{background:var(--paper2);border:1px solid #16454F20;border-radius:10px;padding:10px 12px}
-.note summary{font-weight:700;color:var(--ink);cursor:pointer}
-footer{background:var(--ink);color:var(--paper);padding:24px 0;text-align:center;font:0.68rem "IBM Plex Mono",monospace;letter-spacing:.06em}
-@media(max-width:700px){
- .hero{padding-top:14px}
- .lead{font-size:.82rem}
- iframe{height:calc(100vh - 118px);min-height:560px}
- .quick{display:none}
- .viewer{margin-top:4px;border-left:0;border-right:0;border-radius:0}
- .wrap.viewer-wrap{padding:0}
-}
-</style>
+<link rel="stylesheet" href="../shared/tool-shell.css">
 </head>
 <body>
-<header>
- <div class="wrap nav">
+<header><div class="wrap nav">
   <a class="brand" href="../../">統計学でまちづくり<small>COMMUNITY DEVELOPMENT WITH STATISTICS</small></a>
-  <a class="back" href="../../">← トップへ</a>
- </div>
-</header>
+  <a class="back" href="../../#field-tools">← FIELD TOOLS</a>
+</div></header>
 
 <main>
- <section class="hero">
-  <div class="wrap">
-   <div class="eyebrow">FIELD TOOL / PUBLIC BETA</div>
-   <h1>都城市 防災統合ビューア β</h1>
-   <p class="lead">災害時に分散しがちな公開情報を、現在地と一緒に確認しやすくするための個人研究プロトタイプです。避難所候補、公開カメラ、水位・雨量などを地図に重ね、気象庁・都城市・宮崎県・国土交通省等の公式情報へすぐ移動できる入口をまとめています。</p>
-   <div class="safety"><strong>都城市の公式サービスではありません。</strong> 本ビューアだけで避難判断を完結させず、避難指示、警報・注意報、道路規制、避難所の開設・混雑状況は必ず公式情報を確認してください。地図上の避難所ピンは「避難先候補」であり、開設中を意味しません。</div>
-   <div class="quick">
-    <a target="_blank" rel="noopener" href="https://www.city.miyakonojo.miyazaki.jp/hazardmap/index.html">都城市公式防災マップ</a>
-    <a target="_blank" rel="noopener" href="https://www.jma.go.jp/bosai/warning/#area_type=class20s&area_code=4520200">気象庁 警報・注意報</a>
+<section class="hero"><div class="wrap">
+  <div class="eyebrow">FIELD TOOL / JAPAN / PUBLIC BETA</div>
+  <h1>防災統合ビューア JAPAN β</h1>
+  <p class="lead">北海道から沖縄まで、場所を変えても同じルールで調べられる全国版です。全国共通の公式データは地図へ直接表示し、河川カメラや道路カメラなど外部利用向けの安定APIが確認できない情報は、現在見ている地点から公式サービスへつなぎます。</p>
+
+  <div class="safety warn"><strong>個人研究によるβ版です。</strong> このビューアだけで避難判断を完結させないでください。避難指示、警報・注意報、道路規制、避難所の開設状況等は、国・都道府県・市区町村などの最新公式情報を優先してください。指定避難所ピンは「指定されている施設」であり、現在開設中を意味しません。</div>
+
+  <div class="policy">
+    <div class="p"><span class="badge a">A｜全国公式</span><br>国土地理院の避難所・ハザード、気象庁アメダスなど。取得できるものは地図に直接表示。</div>
+    <div class="p"><span class="badge b">B｜オープン</span><br>防災では安全性を優先し、現時点では主要な判断レイヤーに共同編集データを使いません。</div>
+    <div class="p"><span class="badge c">C｜公式連携</span><br>河川カメラ・水位・雨量、道路カメラ等。現在地点から国交省等の公式サービスへ接続。</div>
+  </div>
+
+  <div class="quick">
+    <a target="_blank" rel="noopener" href="https://www.jma.go.jp/bosai/warning/">気象庁 警報・注意報</a>
     <a target="_blank" rel="noopener" href="https://www.jma.go.jp/bosai/nowc/">気象庁 雨雲・雷</a>
-    <a target="_blank" rel="noopener" href="https://www.city.miyakonojo.miyazaki.jp/soshiki/5/86181.html">都城市 道路規制</a>
     <a target="_blank" rel="noopener" href="https://www.river.go.jp/">川の防災情報</a>
-   </div>
+    <a target="_blank" rel="noopener" href="https://www.mlit.go.jp/road/bosai/LIVEcamera.html">全国 道路ライブカメラ</a>
+    <a target="_blank" rel="noopener" href="https://disaportal.gsi.go.jp/">重ねるハザードマップ</a>
   </div>
- </section>
+</div></section>
 
- <div class="wrap viewer-wrap">
-  <div class="viewer">
-   <iframe src="map.html" title="都城市 防災統合ビューア 地図" allow="geolocation" loading="eager"></iframe>
-  </div>
- </div>
+<div class="wrap viewer-wrap"><div class="viewer">
+  <iframe src="map.html" title="防災統合ビューア JAPAN 地図" allow="geolocation" loading="eager"></iframe>
+</div></div>
 
- <div class="wrap note">
-  <details>
-   <summary>このビューアの位置づけ・データについて</summary>
-   <p>気象情報の一部は気象庁公開データをブラウザから自動取得します。道路規制や避難所開設・混雑状況など、更新性と安全性が特に重要な情報は、古い情報を地図上に固定表示せず公式ページへの導線を優先しています。</p>
-   <p>静的な地点情報には、公開情報から座標を確認できた地点と、地区・住所レベルで概略配置した地点が混在します。概略地点は地図上でも区別しています。</p>
-  </details>
- </div>
+<div class="wrap note"><details>
+  <summary>A / B / C データ設計と注意事項</summary>
+  <p><b>A｜全国公式データ：</b>外部利用可能な全国データとして確認できたものは、この地図から直接取得します。指定避難所・指定緊急避難場所は国土地理院のGeoJSONタイル、ハザードはハザードマップポータルのタイル、アメダスは気象庁公開データを利用します。</p>
+  <p><b>B｜全国オープンデータ：</b>防災では誤情報による影響が大きいため、現時点では主要判断レイヤーとして採用していません。</p>
+  <p><b>C｜公式サービス連携：</b>全国公式サービスは存在するものの、外部サイトから安定して直接表示するための公開仕様が確認できないものは、自前で内部APIを推測せず公式画面へ送ります。河川カメラ・水位・雨量は「川の防災情報」、道路カメラは国土交通省の全国入口を利用します。</p>
+  <p>外部サービス側の仕様変更や一時的な混雑により、取得・表示できない場合があります。</p>
+</details></div>
 </main>
 <footer>© Community Development with Statistics / Mitsuo Tanaka</footer>
 </body>
