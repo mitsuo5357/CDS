@@ -1,0 +1,17 @@
+{
+ "built_at": "2026-08-19",
+ "source_date": "2026-08-18",
+ "zoom": 12,
+ "features": 65626,
+ "tiles": 4023,
+ "by_category": {
+  "toilet": 44107,
+  "accessible": 8964,
+  "baby": 1532,
+  "water": 8904,
+  "wifi": 12435
+ },
+ "attribution": "© OpenStreetMap contributors",
+ "license": "ODbL 1.0",
+ "license_url": "https://www.openstreetmap.org/copyright"
+}
