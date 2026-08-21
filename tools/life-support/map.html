@@ -7,12 +7,14 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../shared/map-common.css">
 <style>
-/* くらしのおたすけマップ固有：ヘッダー色のみ */
+/* くらしのおたすけマップ固有 */
 .head{background:#245C58}
+.freshness{font-size:11px;color:var(--soft);margin-top:6px}
+.freshness b{color:var(--ink)}
 </style>
 </head>
 <body>
-<div id="map"></div>
+<div id="map"><div class="fab-cross" aria-hidden="true"></div><button class="fab" onclick="searchHere()" title="現在地の周辺を検索">📍 現在地で検索</button></div>
 <div class="panel" id="panel">
  <div class="head">
   <a class="title" href="./" target="_top"><span class="arrow">←</span><b>くらしのおたすけマップ JAPAN</b></a>
@@ -20,8 +22,8 @@
   <button class="hbtn" id="collapseBtn" aria-expanded="true" aria-controls="panelBody" title="パネルを閉じて地図を広く見る">▼</button>
  </div>
  <div class="body" id="panelBody">
-  <div class="notice"><b>全国どこでも同じ検索。</b> BのOpenStreetMapは共同編集データです。未掲載・更新遅れがあるので、現地・施設公式情報を優先してください。</div>
-  <div class="policyline"><span class="source-badge source-a">A 全国公式</span> は全国施設座標がある分野から採用 ／ <span class="source-badge source-b">B オープン</span> は周辺検索 ／ <span class="source-badge source-c">C 公式連携</span> はAED・暑熱避難等。</div>
+  <div class="notice"><b>全国どこでも同じ検索。</b> Bは月1回更新のOpenStreetMapスナップショットです。未掲載・更新遅れがあるので、現地・施設公式情報を優先してください。</div>
+  <div class="policyline"><span class="source-badge source-a">A 全国公式</span> は全国施設座標がある分野から採用 ／ <span class="source-badge source-b">B オープン</span> は全国スナップショットを直接配信 ／ <span class="source-badge source-c">C 公式連携</span> はAED・暑熱避難等。</div>
 
   <div class="filters">
    <button class="fbtn active" data-cat="toilet">B 🚻 トイレ</button>
@@ -33,16 +35,21 @@
 
   <div class="row"><label for="radius">検索半径</label>
    <select id="radius"><option value="1000">1 km</option><option value="3000" selected>3 km</option><option value="5000">5 km</option></select>
-   <span>※検索したときだけ外部取得</span>
   </div>
   <div class="actions">
    <button class="primary" onclick="searchHere()">📍 現在地で検索</button>
-   <button class="secondary" onclick="searchCenter()">＋ 地図中心で検索</button>
+   <button class="secondary" onclick="searchCenter()">🎯 この中心で検索</button>
    <a class="caction" href="https://www.qqzaidanmap.jp/aeds/map" target="_blank" rel="noopener">C ❤️ 全国AED</a>
    <a class="caction" href="https://www.wbgt.env.go.jp/heatillness_shelter.php" target="_blank" rel="noopener">C ❄️ 暑熱避難</a>
   </div>
 
-  <div id="status" class="status" aria-live="polite">まずは「📍 現在地で検索」を押してください。地図を動かしてから「地図中心で検索」でも探せます。</div>
+  <div id="status" class="status" aria-live="polite">まずは地図上の「📍 現在地で検索」を押してください。地図を動かして、十字の位置を「🎯 この中心で検索」でも探せます。</div>
+  <div class="freshness" id="freshness"></div>
+
+  <div class="row">
+   <button class="fbtn" id="liveBtn" style="width:100%" title="スナップショット以降の変更を、公開Overpassに直接問い合わせます">🔄 最新のOSMで取り直す（混雑時は失敗します）</button>
+  </div>
+
   <div class="quick">
    <a href="https://japanfreewifi.jnto.go.jp/eng/wifi-spot-list.php?distance=5000&location=curp&sort=distance&view=map" target="_blank" rel="noopener">C 📶 Japan.Free Wi-Fi ↗</a>
    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">B OSM / ODbL ↗</a>
@@ -55,14 +62,14 @@
 <div class="legend" id="legend">
  <b>データ設計</b><br>
  <span class="source-badge source-a">A</span> 全国公式の位置付き施設データがある分野から採用<br>
- <span class="source-badge source-b">B</span> OpenStreetMap / ODbL 周辺検索<br>
+ <span class="source-badge source-b">B</span> OpenStreetMap / ODbL の全国スナップショットを自前配信<br>
  <span class="source-badge source-c">C</span> AED・暑熱避難等は公式サービス優先
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../shared/map-core.js"></script>
 <script>
-const {esc,badge,hav,dist,pin,initPanelChrome,locate}=CDS;
+const {esc,badge,hav,dist,pin,runLimited,initPanelChrome,locate}=CDS;
 const map=L.map('map',{preferCanvas:true}).setView([36.2,138.2],5);
 L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{
  maxZoom:18,attribution:'出典：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院 地理院タイル</a>'
@@ -71,23 +78,60 @@ L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{
 const dynamic=L.layerGroup().addTo(map),status=document.getElementById('status'),near=document.getElementById('near');
 initPanelChrome(map);
 
-let active={toilet:true,accessible:true,baby:true,water:true,wifi:false},lastOrigin=null,lastResults=[],markerByIndex=new Map();
-let hereMarker=null,searching=false;
-const overpassEndpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
-const OVERPASS_TIMEOUT=30000;
+/* ---------- Bレイヤー：事前生成スナップショット ---------- */
+const DATA_ZOOM=12, DATA_ROOT='data';
+const tileCache=new Map();              // "z/x/y" -> 施設配列（404も空配列で記憶）
+let active={toilet:true,accessible:true,baby:true,water:true,wifi:false};
+let lastOrigin=null,lastResults=[],markerByIndex=new Map(),hereMarker=null,busy=false;
+const CAT={t:'toilet',a:'accessible',b:'baby',w:'water',i:'wifi'};
 
-function cats(t){
- const c=[];
- if(t.amenity==='toilets')c.push('toilet');
- if((t.wheelchair&&t.wheelchair!=='no')||(t['toilets:wheelchair']&&t['toilets:wheelchair']!=='no'))c.push('accessible');
- if(t.changing_table==='yes'||t.changing_table==='limited')c.push('baby');
- if(t.amenity==='drinking_water'||t.drinking_water==='yes')c.push('water');
- if(t.internet_access==='wlan'||t.internet_access==='yes')c.push('wifi');
- return [...new Set(c)];
+fetch(`${DATA_ROOT}/meta.json`).then(r=>r.ok?r.json():null).then(m=>{
+ if(!m)return;
+ document.getElementById('freshness').innerHTML=
+  `Bのデータ：<b>${esc(m.source_date||m.built_at)}</b> 時点のOpenStreetMap（全国 ${Number(m.features).toLocaleString()}件）`;
+}).catch(()=>{});
+
+function lon2tile(lon,z){return Math.floor((lon+180)/360*Math.pow(2,z));}
+function lat2tile(lat,z){const r=lat*Math.PI/180,n=Math.pow(2,z);return Math.floor((1-Math.asinh(Math.tan(r))/Math.PI)/2*n);}
+
+/* 検索円を覆うタイルだけを列挙する */
+function tilesForCircle(lat,lon,radiusM){
+ const dLat=radiusM/111320;
+ const dLon=radiusM/(111320*Math.max(0.2,Math.cos(lat*Math.PI/180)));
+ const x1=lon2tile(lon-dLon,DATA_ZOOM),x2=lon2tile(lon+dLon,DATA_ZOOM);
+ const y1=lat2tile(lat+dLat,DATA_ZOOM),y2=lat2tile(lat-dLat,DATA_ZOOM);
+ const out=[];
+ for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)out.push([x,y]);
+ return out;
 }
+async function loadTile(x,y){
+ const key=`${DATA_ZOOM}/${x}/${y}`;
+ if(tileCache.has(key))return tileCache.get(key).length;
+ let items=[];
+ try{
+  const r=await fetch(`${DATA_ROOT}/${key}.geojson`);
+  if(r.ok){
+   const js=await r.json();
+   items=(js.f||[]).map(o=>({
+    lat:o.t[0], lon:o.t[1],
+    cats:[...(o.p.c||'')].map(ch=>CAT[ch]).filter(Boolean),
+    name:o.p.n||'施設',
+    note:[o.p.o&&'営業時間 '+o.p.o, o.p.f&&'料金 '+o.p.f, o.p.a&&'立入 '+o.p.a, o.p.p&&'運営 '+o.p.p].filter(Boolean).join(' / '),
+    osm:o.p.i?`https://www.openstreetmap.org/${o.p.i.replace('n/','node/').replace('w/','way/').replace('r/','relation/')}`:'https://www.openstreetmap.org/'
+   }));
+  }
+  /* 404はデータの無い海上・山間部。空タイルとして記憶する */
+ }catch(e){ /* ネットワーク失敗時も空扱い（次回再試行させるためキャッシュしない） */
+  return 0;
+ }
+ tileCache.set(key,items);
+ return items.length;
+}
+
 function icons(c){return (c.includes('toilet')?'🚻':'')+(c.includes('accessible')?'♿':'')+(c.includes('baby')?'👶':'')+(c.includes('water')?'💧':'')+(c.includes('wifi')?'📶':'');}
 function color(c){if(c.includes('baby'))return '#B75D77';if(c.includes('water'))return '#16829E';if(c.includes('wifi'))return '#2E899D';if(c.includes('accessible'))return '#4E7A33';return '#397757';}
 function visible(r){return r.cats.some(c=>active[c]);}
+
 function redraw(){
  dynamic.clearLayers();markerByIndex.clear();
  lastResults.forEach((r,i)=>{
@@ -98,67 +142,104 @@ function redraw(){
  });
  if(lastOrigin)showNear();
 }
-document.querySelectorAll('.fbtn').forEach(b=>b.onclick=()=>{
+document.querySelectorAll('.fbtn[data-cat]').forEach(b=>b.onclick=()=>{
  const c=b.dataset.cat;active[c]=!active[c];b.classList.toggle('active',active[c]);redraw();
 });
 
+/* ---------- 検索（スナップショット。外部APIに依存しない） ---------- */
+async function runSearch(lat,lon){
+ if(busy)return;
+ busy=true;
+ try{
+  const radius=parseInt(document.getElementById('radius').value);
+  lastOrigin=[lat,lon];lastResults=[];dynamic.clearLayers();near.innerHTML='';
+  status.innerHTML=`${badge('B')} 周辺データを読み込み中…`;
+  const ts=tilesForCircle(lat,lon,radius);
+  await runLimited(ts.map(([x,y])=>()=>loadTile(x,y)),8);
+  const seen=new Set(),km=radius/1000;
+  for(const [x,y] of ts){
+   for(const r of (tileCache.get(`${DATA_ZOOM}/${x}/${y}`)||[])){
+    if(seen.has(r.osm))continue;
+    if(hav(lat,lon,r.lat,r.lon)>km)continue;
+    seen.add(r.osm);lastResults.push(r);
+   }
+  }
+  status.innerHTML=`${badge('B')} 半径 ${km}km：${lastResults.length}件。OSMの未掲載・更新遅れの可能性があります。`;
+  redraw();showNear();
+ }finally{busy=false;}
+}
+
+/* ---------- 任意：公開Overpassで最新を取り直す ---------- */
+const overpassEndpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+const OVERPASS_TIMEOUT=30000;
+function overpassQuery(lat,lon,radius){
+ const parts=[];
+ if(active.toilet||active.accessible)parts.push(`nwr["amenity"="toilets"](around:${radius},${lat},${lon});`);
+ if(active.water)parts.push(`nwr["amenity"="drinking_water"](around:${radius},${lat},${lon});`);
+ if(active.baby)parts.push(`nwr["changing_table"~"yes|limited"](around:${radius},${lat},${lon});`);
+ if(active.wifi)parts.push(`nwr["internet_access"~"wlan|yes"](around:${radius},${lat},${lon});`);
+ return `[out:json][timeout:25];(${parts.join('')});out center tags;`;
+}
 async function overpassFetch(q){
  let lastError=null;
  for(const endpoint of overpassEndpoints){
-  const ac=new AbortController();
-  const timer=setTimeout(()=>ac.abort(),OVERPASS_TIMEOUT);
+  const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),OVERPASS_TIMEOUT);
   try{
    const rr=await fetch(endpoint,{method:'POST',signal:ac.signal,
      headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
      body:'data='+encodeURIComponent(q)});
    if(!rr.ok)throw new Error('HTTP '+rr.status);
    return await rr.json();
-  }catch(e){lastError=e;}
-  finally{clearTimeout(timer);}
+  }catch(e){lastError=e;}finally{clearTimeout(timer);}
  }
  throw lastError||new Error('Overpass failed');
 }
-async function runSearch(lat,lon){
- if(searching){status.innerHTML=`${badge('B')} 前の検索を実行中です。少しお待ちください。`;return;}
- searching=true;
- const radius=parseInt(document.getElementById('radius').value);
- lastOrigin=[lat,lon];lastResults=[];dynamic.clearLayers();near.innerHTML='';
- status.innerHTML=`${badge('B')} 周辺データを取得中…`;
- const q=`[out:json][timeout:25];(
-  nwr["amenity"="toilets"](around:${radius},${lat},${lon});
-  nwr["amenity"="drinking_water"](around:${radius},${lat},${lon});
-  nwr["changing_table"~"yes|limited"](around:${radius},${lat},${lon});
-  nwr["internet_access"~"wlan|yes"](around:${radius},${lat},${lon});
- );out center tags;`;
+function catsFromTags(t){
+ const c=[];
+ if(t.amenity==='toilets')c.push('toilet');
+ if((t.wheelchair&&t.wheelchair!=='no')||(t['toilets:wheelchair']&&t['toilets:wheelchair']!=='no'))c.push('accessible');
+ if(t.changing_table==='yes'||t.changing_table==='limited')c.push('baby');
+ if(t.amenity==='drinking_water'||t.drinking_water==='yes')c.push('water');
+ if(t.internet_access==='wlan'||t.internet_access==='yes')c.push('wifi');
+ return [...new Set(c)];
+}
+document.getElementById('liveBtn').onclick=async()=>{
+ if(busy)return;
+ if(!lastOrigin){status.textContent='先に「現在地で検索」または「地図中心で検索」を実行してください。';return;}
+ busy=true;
+ const [lat,lon]=lastOrigin,radius=parseInt(document.getElementById('radius').value);
+ status.innerHTML=`${badge('B')} 公開Overpassに最新データを問い合わせ中…`;
  try{
-  const js=await overpassFetch(q),seen=new Set();
+  const js=await overpassFetch(overpassQuery(lat,lon,radius)),seen=new Set(),out=[];
   for(const e of (js.elements||[])){
-   const t=e.tags||{},c=cats(t);if(!c.length)continue;
+   const t=e.tags||{},c=catsFromTags(t);if(!c.length)continue;
    const la=e.lat??e.center?.lat,lo=e.lon??e.center?.lon;if(la==null||lo==null)continue;
    const key=e.type+'/'+e.id;if(seen.has(key))continue;seen.add(key);
-   const fallback=c.includes('toilet')?'公衆トイレ':c.includes('water')?'飲み水':c.includes('baby')?'おむつ交換設備':'Wi-Fi';
    const notes=[];
    if(t.opening_hours)notes.push('営業時間 '+t.opening_hours);
    if(t.fee)notes.push('料金 '+t.fee);
    if(t.access)notes.push('立入 '+t.access);
    if(t.operator)notes.push('運営 '+t.operator);
-   lastResults.push({lat:la,lon:lo,cats:c,name:t['name:ja']||t.name||fallback,note:notes.join(' / '),osm:`https://www.openstreetmap.org/${e.type}/${e.id}`});
+   out.push({lat:la,lon:lo,cats:c,name:t['name:ja']||t.name||'施設',note:notes.join(' / '),
+             osm:`https://www.openstreetmap.org/${e.type}/${e.id}`});
   }
-  status.innerHTML=`${badge('B')} 半径 ${radius/1000}km：${lastResults.length}件取得。OSMの未掲載・更新遅れの可能性があります。`;
+  lastResults=out;
+  status.innerHTML=`${badge('B')} 最新のOSMから ${out.length}件（半径 ${radius/1000}km）。`;
   redraw();showNear();
  }catch(e){
-  status.textContent='OpenStreetMapの周辺検索を取得できませんでした。公開Overpassサービスが混雑している可能性があります。時間を置いて、もう一度お試しください。';
-  near.innerHTML='<div style="font-size:11px;color:#8b4b52">取得できませんでした。AED・暑熱避難などの公式サービスは、上のCボタンから利用できます。</div>';
- }finally{searching=false;}
-}
+  status.textContent='公開Overpassが混雑していて取得できませんでした。表示中のスナップショットはそのまま使えます。';
+ }finally{busy=false;}
+};
+
+/* ---------- 近い施設リスト ---------- */
 function showNear(){
  if(!lastOrigin)return;
- const a=lastResults.map((r,i)=>({r,i,d:hav(lastOrigin[0],lastOrigin[1],r.lat,r.lon)})).filter(x=>visible(x.r)).sort((a,b)=>a.d-b.d).slice(0,12);
+ const a=lastResults.map((r,i)=>({r,i,d:hav(lastOrigin[0],lastOrigin[1],r.lat,r.lon)}))
+   .filter(x=>visible(x.r)).sort((a,b)=>a.d-b.d).slice(0,12);
  near.innerHTML=a.length
   ?a.map(x=>`<div class="item" role="button" tabindex="0" data-i="${x.i}"><b>${icons(x.r.cats)} ${esc(x.r.name)}</b><div>${dist(x.d)} ／ B OpenStreetMap</div></div>`).join('')
   :'<div style="font-size:11px;color:#68777a">条件に合う地点がありません。フィルタを増やすか、検索半径を広げてください。</div>';
 }
-/* リストはイベント委譲。キーボードでも選べる */
 near.addEventListener('click',e=>{const el=e.target.closest('.item');if(el)focusR(Number(el.dataset.i));});
 near.addEventListener('keydown',e=>{
  if(e.key!=='Enter'&&e.key!==' ')return;
@@ -166,6 +247,7 @@ near.addEventListener('keydown',e=>{
  e.preventDefault();focusR(Number(el.dataset.i));
 });
 function focusR(i){const r=lastResults[i],m=markerByIndex.get(i);if(!r)return;map.setView([r.lat,r.lon],17);if(m)m.openPopup();}
+
 function searchCenter(){const c=map.getCenter();runSearch(c.lat,c.lng);}
 function searchHere(){
  locate((lat,lon)=>{
