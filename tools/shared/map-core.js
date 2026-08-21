@@ -69,6 +69,24 @@ window.CDS = (() => {
         if(map) setTimeout(()=>map.invalidateSize(), 210);
       });
     }
+    /* 狭い画面では、長い注意書きを2行に畳んでおく（タップで全文） */
+    if(window.matchMedia("(max-width:650px)").matches){
+      document.querySelectorAll(".notice, .policyline").forEach(el => {
+        el.classList.add("clampable", "clamped");
+        el.setAttribute("role", "button");
+        el.setAttribute("tabindex", "0");
+        el.setAttribute("aria-expanded", "false");
+        const toggle = () => {
+          const open = !el.classList.toggle("clamped");
+          el.setAttribute("aria-expanded", String(open));
+        };
+        el.addEventListener("click", toggle);
+        el.addEventListener("keydown", e => {
+          if(e.key === "Enter" || e.key === " "){ e.preventDefault(); toggle(); }
+        });
+      });
+    }
+
     if(legend && lBtn){
       const close = () => { legend.classList.remove("show"); lBtn.setAttribute("aria-expanded","false"); };
       lBtn.addEventListener("click", () => {

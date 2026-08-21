@@ -68,6 +68,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans
 .attrline{font-size:10.5px;line-height:1.55;color:var(--soft);margin-top:8px;padding-top:7px;border-top:1px solid var(--line)}
 .attrline a{color:var(--soft)}
 
+/* ---------- フローティング現在地ボタン（スマホのみ） ---------- */
+.fab{display:none}
+.fab-cross{display:none}
+
 /* ---------- 凡例 ---------- */
 .legend{position:fixed;z-index:8000;left:10px;bottom:20px;background:rgba(251,249,242,.96);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.6;max-width:300px}
 
@@ -89,19 +93,63 @@ select{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:7p
    モバイル
    ========================================================= */
 @media(max-width:650px){
-  /* セーフエリア対応：ホームインジケータにパネルを食われない */
-  .panel{top:auto;left:6px;right:6px;width:auto;
-         bottom:calc(6px + env(safe-area-inset-bottom,0px))}
-  .body{max-height:52vh}
+  /* 地図の上に操作パネルを重ねない。
+     縦に分割し、地図（上）と操作エリア（下）を並べる。
+     これで「地図中心」が必ず見えるようになる。 */
+  body{display:flex;flex-direction:column;height:100%}
+  #map{flex:1 1 auto;min-height:0;height:auto}
 
-  /* 最初の一手（現在地）を最上段・全幅へ */
-  .actions .primary{order:-1;grid-column:1/-1}
+  .panel{position:static;flex:0 0 42%;width:auto;top:auto;right:auto;bottom:auto;
+         display:flex;flex-direction:column;min-height:0;
+         border-radius:0;border:0;border-top:1px solid var(--line);
+         box-shadow:0 -6px 18px #16454F1f;background:var(--paper2)}
+  .body{flex:1 1 auto;min-height:0;max-height:none;
+        padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+
+  /* 折りたたむと地図が全面に広がる */
+  .panel.collapsed{flex:0 0 auto}
+
+  /* 最初の一手はパネルではなく、地図上のボタンに担わせる */
+  .actions .primary{display:none}
 
   /* 二重スクロール解消：リストは親パネルのスクロールに任せる */
   .near{max-height:none;overflow:visible}
 
-  /* 凡例は常時非表示ではなく、ヘッダーのボタンから開閉 */
+  /* 長い注意書きは冒頭2行だけ見せ、タップで全文。
+     一番大事な一文を確実に読ませつつ、操作ボタンを画面内に残す */
+  .clampable{cursor:pointer;position:relative}
+  /* 正確に2行で切る。overflow:hiddenはパディング境界で切るため、
+     下パディングを0にしないと3行目がその分だけ覗いてしまう */
+  .clampable.clamped{padding-bottom:0;overflow:hidden;
+                     max-height:calc(2 * 1.6em + 9px)}
+  .clampable.clamped::after{content:"… タップで全文";position:absolute;right:0;bottom:0;
+        padding:0 9px 1px 26px;font-size:10px;font-weight:800;color:var(--soft);
+        background:linear-gradient(90deg,#fff4dd00,#fff4dd 30%)}
+  .policyline.clamped::after{background:linear-gradient(90deg,#edf5f200,#edf5f2 30%)}
+
+  /* 地図上に浮く唯一のボタン */
+  .fab{display:flex;align-items:center;justify-content:center;gap:6px;
+       position:absolute;z-index:8500;right:10px;bottom:14px;
+       min-height:48px;padding:0 16px;border:0;border-radius:999px;
+       background:var(--teal);color:#fff;font:800 13px inherit;cursor:pointer;
+       box-shadow:0 4px 14px #16454F45}
+  .fab:active{transform:translateY(1px)}
+  .fab:focus-visible{outline:3px solid #fff;outline-offset:2px}
+
+  /* 「地図中心で検索」の中心を目に見えるようにする */
+  .fab-cross{display:block;position:absolute;z-index:8400;left:50%;top:50%;
+             width:26px;height:26px;margin:-13px 0 0 -13px;pointer-events:none;
+             background:
+               linear-gradient(#16454F,#16454F) 50% 0/2px 9px no-repeat,
+               linear-gradient(#16454F,#16454F) 50% 100%/2px 9px no-repeat,
+               linear-gradient(#16454F,#16454F) 0 50%/9px 2px no-repeat,
+               linear-gradient(#16454F,#16454F) 100% 50%/9px 2px no-repeat;
+             opacity:.55}
+
+  /* 凡例はヘッダーのボタンから開閉 */
   .legend{display:none}
-  .legend.show{display:block;left:6px;right:6px;bottom:auto;
-               top:calc(8px + env(safe-area-inset-top,0px));max-width:none;z-index:9100}
+  .legend.show{display:block;left:6px;right:6px;bottom:auto;top:8px;max-width:none;z-index:9100}
 }
+
+/* 地図と操作エリアを分ける都合上、地図は位置指定の基準になる必要がある */
+#map{position:relative}
